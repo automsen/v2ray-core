@@ -6,6 +6,8 @@ import (
 	"io"
 	"strings"
 
+	"encoding/base64"
+	"github.com/forgoer/openssl"
 	"github.com/golang/protobuf/proto"
 	"v2ray.com/core/common"
 	"v2ray.com/core/common/buf"
@@ -19,7 +21,7 @@ type ConfigFormat struct {
 }
 
 // ConfigLoader is a utility to load V2Ray config from external source.
-type ConfigLoader func(input io.Reader) (*Config, error)
+type ConfigLoader func(input io.Reader, entry bool, entryKey string) (*Config, error)
 
 var (
 	configLoaderByName = make(map[string]*ConfigFormat)
@@ -58,23 +60,56 @@ func LoadConfig(formatName string, filename string, input io.Reader) (*Config, e
 	ext := getExtension(filename)
 	if len(ext) > 0 {
 		if f, found := configLoaderByExt[ext]; found {
-			return f.Loader(input)
+			return f.Loader(input, false, "")
 		}
 	}
 
 	if f, found := configLoaderByName[formatName]; found {
-		return f.Loader(input)
+		return f.Loader(input, false, "")
 	}
 
 	return nil, newError("Unable to load config in ", formatName).AtWarning()
 }
 
-func loadProtobufConfig(input io.Reader) (*Config, error) {
+func LoadConfigEntry(formatName string, filename string, input io.Reader, entry bool, entryKey string) (*Config, error) {
+	ext := getExtension(filename)
+	if len(ext) > 0 {
+		if f, found := configLoaderByExt[ext]; found {
+			return f.Loader(input, entry, entryKey)
+		}
+	}
+
+	if f, found := configLoaderByName[formatName]; found {
+		return f.Loader(input, entry, entryKey)
+	}
+
+	return nil, newError("Unable to load config in ", formatName).AtWarning()
+}
+
+//add by tanglongsen
+func LoadConfigDataBytes(input io.Reader, entryKey string) (*Config, error) {
 	config := new(Config)
 	data, err := buf.ReadAllToBytes(input)
 	if err != nil {
 		return nil, err
 	}
+
+	decodeBytes, _ := base64.StdEncoding.DecodeString(string(data))
+	dst, _ := openssl.AesECBDecrypt(decodeBytes, []byte(entryKey), openssl.PKCS7_PADDING)
+
+	if err := proto.Unmarshal(dst, config); err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
+func loadProtobufConfig(input io.Reader, entry bool, entryKey string) (*Config, error) {
+	config := new(Config)
+	data, err := buf.ReadAllToBytes(input)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := proto.Unmarshal(data, config); err != nil {
 		return nil, err
 	}

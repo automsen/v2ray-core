@@ -20,9 +20,12 @@ import (
 
 var (
 	configFile = flag.String("config", "", "Config file for V2Ray.")
-	version    = flag.Bool("version", false, "Show current version of V2Ray.")
-	test       = flag.Bool("test", false, "Test config file only, without launching V2Ray server.")
-	format     = flag.String("format", "json", "Format of input file.")
+	//加密文件 add by tanglongsen
+	encry    = flag.Bool("encry", false, "encry is true or false.")
+	encryKey = flag.String("encryKey", "", "encry is key.")
+	version  = flag.Bool("version", false, "Show current version of V2Ray.")
+	test     = flag.Bool("test", false, "Test config file only, without launching V2Ray server.")
+	format   = flag.String("format", "json", "Format of input file.")
 )
 
 func fileExists(file string) bool {
@@ -66,9 +69,17 @@ func startV2Ray() (core.Server, error) {
 	}
 	defer configInput.Close()
 
-	config, err := core.LoadConfig(GetConfigFormat(), configFile, configInput)
-	if err != nil {
-		return nil, newError("failed to read config file: ", configFile).Base(err)
+	var config *core.Config
+	if *encry { //modify by tanglongsen
+		config, err = core.LoadConfigEntry(GetConfigFormat(), configFile, configInput, true, *encryKey)
+		if err != nil {
+			return nil, newError("failed to read entry config file: ", configFile, *encryKey).Base(err)
+		}
+	} else {
+		config, err = core.LoadConfig(GetConfigFormat(), configFile, configInput)
+		if err != nil {
+			return nil, newError("failed to read config file: ", configFile).Base(err)
+		}
 	}
 
 	server, err := core.New(config)
