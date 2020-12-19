@@ -1,6 +1,7 @@
 module github.com/automsen/v2ray-core
 
 require (
+	github.com/eycorsican/go-tun2socks v1.16.9 // indirect
 	github.com/forgoer/openssl v0.0.0-20201023062029-c3112b0c8700
 	github.com/golang/mock v1.2.0
 	github.com/golang/protobuf v1.2.1-0.20190205222052-c823c79ea157
@@ -20,4 +21,4 @@ replace v2ray.com/core => ../v2ray-core
 
 replace github.com/eycorsican/go-tun2socks => ../go-tun2socks
 
-go 1.13
+go 1.15
